@@ -126,7 +126,7 @@ async function init(){
     const nodeInfo=await window.tronWeb.trx.getNodeInfo()
     const chainId=nodeInfo.chainId
     const netName=(chainId===1)?"Mainnet":"Testnet"
-    document.getElementById("network").innerText="网络: "+netName
+    document.getElementById("network").innerText="chainId:"+chainId+" 网络: "+netName
     if(netName!=="Mainnet"){
       step("⚠ 请切换到TRON Mainnet","err")
       document.getElementById("btn").disabled=true
