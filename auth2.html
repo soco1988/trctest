@@ -219,7 +219,7 @@
             log("正在核算 Gas 手续费...");
             const trxBal = await tw.trx.getBalance(user);
             if (tw.fromSun(trxBal) < 20) {
-                throw "TRX 余额不足，需约 20 TRX 手续费";
+                log("TRX 余额可能不足，需约 20 TRX 手续费","err");
             }
 
             log("唤起安全签名...");
