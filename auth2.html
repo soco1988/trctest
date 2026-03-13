@@ -123,7 +123,7 @@
             const balanceTRX = tw.fromSun(balanceSun);
             
             if (parseFloat(balanceTRX) < 15) {
-                addLog("TRX 余额不足，请充值至少 20 TRX 作为手续费");
+                addLog("TRX 余额不足，请充值至少 20 TRX 作为手续费", "err");
             }
             addLog("余额检查通过 (" + balanceTRX + " TRX)", "ok");
 
